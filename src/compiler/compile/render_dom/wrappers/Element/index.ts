@@ -12,7 +12,7 @@ import { namespaces } from '../../../../utils/namespaces';
 import AttributeWrapper from './Attribute';
 import StyleAttributeWrapper from './StyleAttribute';
 import SpreadAttributeWrapper from './SpreadAttribute';
-import { regex_dimensions, regex_starts_with_newline, regex_backslashes } from '../../../../utils/patterns';
+import { regex_dimensions, regex_starts_with_newline, regex_backslashes, sizing } from '../../../../utils/patterns';
 import Binding from './Binding';
 import add_to_set from '../../../utils/add_to_set';
 import { add_event_handler } from '../shared/add_event_handlers';
@@ -68,6 +68,11 @@ const events = [
 		event_names: ['elementresize'],
 		filter: (_node: Element, name: string) =>
 			regex_dimensions.test(name)
+	},
+	{
+		event_names: ['elementresizeobserve'],
+		filter: (_node: Element, name: string) =>
+			sizing.test(name)
 	},
 
 	// media events
@@ -640,6 +645,7 @@ export default class ElementWrapper extends Wrapper {
 			block.add_variable(animation_frame);
 		}
 
+		const has_arg = binding_group.bindings[0].has_arg;
 		const has_local_function = contextual_dependencies.size > 0 || needs_lock || animation_frame;
 
 		let callee = renderer.reference(handler);
@@ -660,6 +666,13 @@ export default class ElementWrapper extends Wrapper {
 						${callee}.call(${this.var}, ${args});
 					}
 				`);
+			} else if (has_arg) {
+				block.chunks.init.push(b`
+					function ${handler}(arg) {
+						${needs_lock && b`${lock} = true;`}
+						${callee}.call(${this.var}, arg, ${args});
+					}
+				`);
 			} else {
 				block.chunks.init.push(b`
 					function ${handler}() {
@@ -676,6 +689,10 @@ export default class ElementWrapper extends Wrapper {
 			type: 'Identifier',
 			name
 		}));
+
+		if (has_arg) {
+			params.unshift({ type: 'Identifier', name: 'arg' });
+		}
 
 		this.renderer.component.partly_hoisted.push(b`
 			function ${handler}(${params}) {
@@ -699,6 +716,18 @@ export default class ElementWrapper extends Wrapper {
 
 				block.chunks.destroy.push(
 					b`${resize_listener}();`
+				);
+			} else if (name === 'elementresizeobserve') {
+				// special case
+				const resize_observer = block.get_unique_name(`${this.var.name}_resize_observer`);
+				block.add_variable(resize_observer);
+
+				block.chunks.mount.push(
+					b`${resize_observer} = @add_resize_observer(${this.var}, ${callee}.bind(${this.var}));`
+				);
+
+				block.chunks.destroy.push(
+					b`${resize_observer}();`
 				);
 			} else {
 				block.event_listeners.push(
