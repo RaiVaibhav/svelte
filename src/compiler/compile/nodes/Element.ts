@@ -906,7 +906,7 @@ export default class Element extends Node {
 				} else if (contenteditable && !contenteditable.is_static) {
 					return component.error(contenteditable, compiler_errors.dynamic_contenteditable_attribute);
 				}
-			} else if (name !== 'this') {
+			} else if (name !== 'this' && !sizing.test(name)) {
 				return component.error(binding, compiler_errors.invalid_binding(binding.name));
 			}
 		});
