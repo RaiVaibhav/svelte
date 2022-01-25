@@ -11,7 +11,7 @@ import StyleDirective from './StyleDirective';
 import Text from './Text';
 import { namespaces } from '../../utils/namespaces';
 import map_children from './shared/map_children';
-import { regex_dimensions, regex_starts_with_newline, regex_non_whitespace_character, sizing } from '../../utils/patterns';
+import { regex_dimensions, regex_starts_with_newline, regex_non_whitespace_character, sizing_border_box, sizing_content_box, sizing_device_pixel_content_box } from '../../utils/patterns';
 import fuzzymatch from '../../utils/fuzzymatch';
 import list from '../../utils/list';
 import Let from './Let';
@@ -906,7 +906,12 @@ export default class Element extends Node {
 				} else if (contenteditable && !contenteditable.is_static) {
 					return component.error(contenteditable, compiler_errors.dynamic_contenteditable_attribute);
 				}
-			} else if (name !== 'this' && !sizing.test(name)) {
+			} else if (
+				name !== 'this' &&
+				!sizing_border_box.test(name) &&
+				!sizing_content_box.test(name) &&
+				!sizing_device_pixel_content_box.test(name)
+			) {
 				return component.error(binding, compiler_errors.invalid_binding(binding.name));
 			}
 		});

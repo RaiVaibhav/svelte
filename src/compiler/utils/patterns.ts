@@ -23,4 +23,6 @@ export const regex_invalid_variable_identifier_characters = /[^a-zA-Z0-9_$]/g;
 
 export const regex_dimensions = /^(?:offset|client)(?:Width|Height)$/;
 
-export const sizing = /^(?:contentRect|contentBoxSize|borderBoxSize|devicePixelContentBoxSize)$/;
+export const sizing_content_box = /^(?:contentRect|contentBoxSize)$/;
+export const sizing_border_box = /^(?:borderBoxSize)$/;
+export const sizing_device_pixel_content_box = /^(?:devicePixelContentBoxSize)$/;

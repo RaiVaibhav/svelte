@@ -3,7 +3,7 @@ import get_object from '../utils/get_object';
 import Expression from './shared/Expression';
 import Component from '../Component';
 import TemplateScope from './shared/TemplateScope';
-import { regex_dimensions, sizing } from '../../utils/patterns';
+import { regex_dimensions, sizing_border_box, sizing_content_box, sizing_device_pixel_content_box } from '../../utils/patterns';
 import { Node as ESTreeNode } from 'estree';
 import { TemplateNode } from '../../interfaces';
 import Element from './Element';
@@ -89,7 +89,9 @@ export default class Binding extends Node {
 
 		this.is_readonly =
 			regex_dimensions.test(this.name) ||
-			sizing.test(this.name) ||
+			sizing_border_box.test(this.name) ||
+			sizing_content_box.test(this.name) ||
+			sizing_device_pixel_content_box.test(this.name) ||
 			(isElement(parent) &&
 				((parent.is_media_node() && read_only_media_attributes.has(this.name)) ||
 					(parent.name === 'input' && type === 'file')) /* TODO others? */);
