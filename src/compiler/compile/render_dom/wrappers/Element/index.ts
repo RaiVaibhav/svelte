@@ -84,6 +84,21 @@ const events = [
 		filter: (_node: Element, name: string) =>
 			sizing_device_pixel_content_box.test(name)
 	},
+	{
+		event_names: ['elementresizeobserveborderbox'],
+		filter: (_node: Element, name: string) =>
+			sizing_border_box.test(name)
+	},
+	{
+		event_names: ['elementresizeobservecontentbox'],
+		filter: (_node: Element, name: string) =>
+			sizing_content_box.test(name)
+	},
+	{
+		event_names: ['elementresizeobservedevicepixelcontentbox'],
+		filter: (_node: Element, name: string) =>
+			sizing_device_pixel_content_box.test(name)
+	},
 
 	// media events
 	{
