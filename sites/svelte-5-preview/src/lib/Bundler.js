@@ -50,16 +50,18 @@ export default class Bundler {
 	/**
 	 *
 	 * @param {import('./types').File[]} files
+	 * @param { string} mode
 	 * @returns
 	 */
-	bundle(files) {
+	bundle(files, mode) {
 		return new Promise((fulfil) => {
 			this.handlers.set(uid, fulfil);
 
 			this.worker.postMessage({
 				uid,
 				type: 'bundle',
-				files
+				files,
+				mode
 			});
 
 			uid += 1;

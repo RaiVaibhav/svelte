@@ -21,7 +21,7 @@
 	/** @type {'light' | 'dark'} */
 	export let theme;
 
-	const { bundle } = get_repl_context();
+	const { bundle, compile_options } = get_repl_context();
 
 	/** @type {import('./console/console').Log[]} */
 	let logs = [];
@@ -100,6 +100,7 @@
 	 * @param {import('$lib/types').Bundle | null} $bundle
 	 */
 	async function apply_bundle($bundle) {
+
 		if (!$bundle) return;
 
 		try {
@@ -129,31 +130,49 @@
 						window._svelteTransitionManager = null;
 					}
 
-					const __repl_exports = ${$bundle.client?.code};
+					const __repl_server_exports = ${$bundle.server?.code};
+					const __repl_client_exports = ${$bundle.client?.code};
 					{
-						const { mount, unmount, App, untrack } = __repl_exports;
+						const { mount, unmount, App: ClientApp, untrack, hydrate } = __repl_client_exports;
+						const {render, App: ServerApp} = __repl_server_exports;
 
-						const console_methods = ['log', 'error', 'trace', 'assert', 'warn', 'table', 'group'];
+						const serverOperation = () => {
+							const {html, head} = render(ServerApp, {});
+							document.head.innerHTML = head;
+							document.body.innerHTML = html;
+						}
+						const clientOperation = (hydrateApp) => {
+							const console_methods = ['log', 'error', 'trace', 'assert', 'warn', 'table', 'group'];
+							// The REPL hooks up to the console to provide a virtual console. However, the implementation
+							// needs to stringify the console to pass over a MessageChannel, which means that the object
+							// can get deeply read and tracked by accident when using the console. We can avoid this by
+							// ensuring we untrack the main console methods.
 
-						// The REPL hooks up to the console to provide a virtual console. However, the implementation
-						// needs to stringify the console to pass over a MessageChannel, which means that the object
-						// can get deeply read and tracked by accident when using the console. We can avoid this by
-						// ensuring we untrack the main console methods.
+							const original = {};
 
-						const original = {};
-
-						for (const method of console_methods) {
-							original[method] = console[method];
-							console[method] = function (...v) {
-								return untrack(() => original[method].apply(this, v));
+							for (const method of console_methods) {
+								original[method] = console[method];
+								console[method] = function (...v) {
+									return untrack(() => original[method].apply(this, v));
+								}
+							}
+							const component = ${$compile_options.generate === 'hydrate' ? 'hydrate' : 'mount'}(ClientApp, { target: document.body, hydrate: hydrateApp });
+							window.__unmount_previous = () => {
+								for (const method of console_methods) {
+									console[method] = original[method];
+								}
+								unmount(component);
 							}
 						}
-						const component = mount(App, { target: document.body });
-						window.__unmount_previous = () => {
-							for (const method of console_methods) {
-								console[method] = original[method];
-							}
-							unmount(component);
+						if (${$compile_options.generate}  === 'server') {
+							serverOperation()
+						} else if (${$compile_options.generate}  === 'client') {
+							clientOperation(false);
+						} else {
+							serverOperation();
+							setTimeout(() => {
+								clientOperation(true)
+							}, 3000)
 						}
 					}
 					//# sourceURL=playground:output
