@@ -76,7 +76,7 @@
 
 	/** @type {import('svelte/compiler').CompileOptions} */
 	const DEFAULT_COMPILE_OPTIONS = {
-		generate: 'client',
+		generate: 'hydrate',
 		dev: false
 	};
 
@@ -152,7 +152,7 @@
 		$bundling = new Promise((resolve) => {
 			resolver = resolve;
 		});
-		const result = await $bundler?.bundle($files);
+		const result = await $bundler?.bundle($files, DEFAULT_COMPILE_OPTIONS.generate);
 		if (result && token === current_token) $bundle = result;
 		resolver();
 	}

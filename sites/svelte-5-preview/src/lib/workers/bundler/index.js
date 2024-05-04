@@ -59,7 +59,7 @@ self.addEventListener(
 
 			case 'bundle': {
 				await ready;
-				const { uid, files } = event.data;
+				const { uid, files, mode } = event.data;
 
 				if (files.length === 0) return;
 
@@ -68,7 +68,7 @@ self.addEventListener(
 				setTimeout(async () => {
 					if (current_id !== uid) return;
 
-					const result = await bundle({ uid, files });
+					const result = await bundle({ uid, files, mode });
 
 					if (JSON.stringify(result.error) === JSON.stringify(ABORT)) return;
 					if (result && uid === current_id) postMessage(result);
@@ -392,8 +392,9 @@ async function get_bundle(uid, mode, cache, local_files_lookup) {
 			} else if (id.endsWith('.svelte')) {
 				result = svelte.compile(code, {
 					filename: name + '.svelte',
-					generate: 'client',
-					dev: true
+					generate: mode === 'client' ? 'dom' : 'ssr',
+					dev: true,
+					hydratable: mode === 'server' ? true : false
 				});
 
 				if (result.css) {
@@ -408,8 +409,9 @@ async function get_bundle(uid, mode, cache, local_files_lookup) {
 			} else if (id.endsWith('.svelte.js')) {
 				result = svelte.compileModule(code, {
 					filename: name + '.js',
-					generate: 'client',
-					dev: true
+					generate: mode === 'client' ? 'dom' : 'ssr',
+					dev: true,
+					hydratable: mode === 'server' ? true : false
 				});
 				if (!result) {
 					return null;
@@ -478,7 +480,7 @@ async function get_bundle(uid, mode, cache, local_files_lookup) {
  * @param {{ uid: number; files: import('$lib/types.js').File[] }} param0
  * @returns
  */
-async function bundle({ uid, files }) {
+async function bundle({ uid, files, mode }) {
 	if (!DEV) {
 		console.clear();
 		console.log(`running Svelte compiler version %c${svelte.VERSION}`, 'font-weight: bold');
@@ -490,7 +492,8 @@ async function bundle({ uid, files }) {
 	lookup.set('./__entry.js', {
 		name: '__entry',
 		source: `
-			export { mount, unmount, untrack } from 'svelte';
+			export { mount, unmount, untrack, hydrate } from 'svelte';
+			export {render} from 'svelte/server';
 			export {default as App} from './App.svelte';
 		`,
 		type: 'js',
@@ -513,15 +516,18 @@ async function bundle({ uid, files }) {
 
 		cached.client = client.cache;
 
-		const client_result = (
-			await client.bundle?.generate({
-				format: 'iife',
-				exports: 'named'
-				// sourcemap: 'inline'
-			})
-		)?.output[0];
+		const client_result =
+			mode === 'hydrate' || mode === 'client'
+				? (
+						await client.bundle?.generate({
+							format: 'iife',
+							exports: 'named'
+							// sourcemap: 'inline'
+						})
+					)?.output[0]
+				: null;
 
-		const server = false // TODO how can we do SSR?
+		const server = mode === 'server' ||  mode === 'hydrate' // TODO how can we do SSR?
 			? await get_bundle(uid, 'server', cached.server, lookup)
 			: null;
 
@@ -536,7 +542,7 @@ async function bundle({ uid, files }) {
 			? (
 					await server.bundle?.generate({
 						format: 'iife',
-						name: 'SvelteComponent',
+						// name: 'SvelteComponent',
 						exports: 'named'
 						// sourcemap: 'inline'
 					})
